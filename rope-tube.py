@@ -92,58 +92,6 @@ class RopeRenderer:
             self.camera.rotation_euler = (random.uniform(-pi/4, pi/4), random.uniform(-pi/4, pi/4), random.uniform(-pi, pi))
         bpy.ops.object.light_add(type='SUN', radius=1, location=(0, 0, 0))
 
-
-    def make_rigid_rope(self):
-        '''
-        Join 4 circles and "twist" them to create realistic rope (See this 5 min. tutorial: https://youtu.be/xYhIoiOnPj4 if interested)
-        '''
-        bpy.ops.mesh.primitive_circle_add(location=self.origin)
-        if self.rope_radius is not None:
-            radius = self.rope_radius
-        else:
-            radius = np.random.uniform(0.048, 0.048)
-        bpy.ops.transform.resize(value=(radius, radius, radius))
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.transform.rotate(value= pi / 2, orient_axis='X')
-        # bpy.ops.transform.translate(value=(radius, 0, 0))
-        bpy.ops.object.mode_set(mode='OBJECT')
-        for i in range(1, 4):
-            bpy.ops.object.duplicate_move(OBJECT_OT_duplicate=None, TRANSFORM_OT_translate=None)
-            ob = bpy.context.active_object
-            # ob.rotation_euler = (0, 0, i * (pi / 2))
-        bpy.ops.object.select_all(action='SELECT')
-        bpy.ops.object.join()
-        self.rope = bpy.context.active_object
-        self.rope.name = self.rope_name
-        bpy.ops.object.modifier_add(type='SCREW')
-        if self.rope_screw_offset is not None:
-            screw_offset = self.rope_screw_offset
-        else:
-            screw_offset = np.random.uniform(12.5, 13)
-        self.rope.modifiers["Screw"].screw_offset = 100 #screw_offset 
-        if self.rope_iterations is not None:
-            rope_iterations = self.rope_iterations
-        else:
-            rope_iterations = 5 #17.7
-        self.rope.modifiers["Screw"].iterations = rope_iterations 
-        bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Screw")
-
-    def add_rope_asymmetry(self):
-        '''
-        Add sphere, to break symmetry of the rope
-        '''
-        bpy.ops.mesh.primitive_uv_sphere_add(location=(self.origin[0], self.origin[1], self.origin[2]))
-        if self.sphere_radius is not None:
-            sphere_radius = self.sphere_radius
-        else:
-            sphere_radius = np.random.uniform(0.35, 0.37)
-        bpy.ops.transform.resize(value=(sphere_radius, sphere_radius, sphere_radius))
-        bpy.ops.transform.rotate(value= pi / 2, orient_axis='X')
-        bpy.ops.object.select_all(action='SELECT')
-        bpy.ops.object.join()
-        self.rope_asymm = bpy.context.active_object
-        self.rope_asymm.name= self.rope_asymm_name
-
     def make_bezier(self):
         '''
         Create bezier curve
@@ -163,16 +111,12 @@ class RopeRenderer:
         self.bezier_points = self.bezier.data.splines[0].bezier_points
         self.bezier.name = self.bezier_name
         self.bezier.select_set(False)
-        self.rope_asymm.select_set(True)
-        bpy.context.view_layer.objects.active = self.rope_asymm
-        # Add bezier curve as deform modifier to the rope
-        bpy.ops.object.modifier_add(type='CURVE')
-        self.rope_asymm.modifiers["Curve"].deform_axis = 'POS_Z'
-        self.rope_asymm.modifiers["Curve"].object = self.bezier
-        bpy.ops.object.mode_set(mode='EDIT')
-        # Adding a curve can mess up surface normals of rope, re-point them outwards
-        bpy.ops.mesh.normals_make_consistent(inside=False)
-        bpy.ops.object.mode_set(mode='OBJECT')
+
+        # set geometry bevel with depth of 0.01
+        self.bezier.data.bevel_depth = 0.01
+        self.bezier.data.bevel_resolution = 10
+        # increase the resolution u
+        self.bezier.data.resolution_u = 64
 
     def slightly_randomize(self, point, planar=True, max_offset=0.3):
         # Slightly displaces the position of a point (for randomization in rope configurations)
@@ -190,6 +134,26 @@ class RopeRenderer:
         if not planar:
             point.co.z += offset_z
         return offset_x, offset_y, offset_z
+
+    def add_rope_asymmetry(self):
+        '''
+        Add sphere, to break symmetry of the rope
+        '''
+        bpy.ops.mesh.primitive_uv_sphere_add(location=(self.origin[0] + 1, self.origin[1], self.origin[2]))
+        if self.sphere_radius is not None:
+            sphere_radius = self.sphere_radius
+        else:
+            sphere_radius = np.random.uniform(0.0002, 0.0002)
+        bpy.ops.transform.resize(value=(sphere_radius, sphere_radius, sphere_radius))
+        bpy.ops.transform.rotate(value= pi / 2, orient_axis='X')
+        bpy.ops.object.select_all(action='SELECT')
+        bpy.ops.object.join()
+        self.rope_asymm = bpy.context.active_object
+        self.rope_asymm.name= self.rope_asymm_name
+        # add a material to the sphere to set color to white
+        mat = bpy.data.materials.new(name="Rope-Asymmetry")
+        self.rope_asymm.data.materials.append(mat)
+        # mat.base_color = (1, 1, 1)
 
     def make_simple_loop(self, offset_min, offset_max):
         # Geometrically arrange the bezier points into a loop, and slightly randomize over node positions for variety
@@ -223,6 +187,42 @@ class RopeRenderer:
             for i in range(6):
                 if i != 3:
                     self.bezier_points[p0 + i].co.x += x_offset
+        return set(range(p0, p0 + 5))
+
+    def make_overhand_knot(self, offset_min, offset_max):
+        # Geometrically arrange the bezier points into a loop, and slightly randomize over node positions for variety
+        #    2_______1
+        #     \  4__/ 
+        #      \ | /\
+        #       \5/__\____________
+        #       / \   | 
+        #______0   3__|  
+        p0 = 4 # np.random.choice(range(4, len(self.bezier_points) - 5))
+        offset_avg = (offset_min + offset_max)/2
+
+        self.bezier_points[p0 + 1].co.y += offset_avg
+        # increase z of p0 + 1
+        cable_height = 0.025
+        self.bezier_points[p0 - 1].co.z += cable_height
+        # self.bezier_points[p0 + 1].co.z += cable_height*2
+        self.bezier_points[p0].co.z -= cable_height
+        self.bezier_points[p0 + 1].co.x += 0.1
+        self.bezier_points[p0 + 1].co.z += cable_height
+        self.bezier_points[p0 + 2].co.y += offset_avg - 0.1
+        self.bezier_points[p0 + 2].co.x = self.bezier_points[p0].co.x - 0.1
+        self.bezier_points[p0 + 3].co.x = self.bezier_points[p0 + 2].co.x
+        # self.bezier_points[p0 + 4].co.z -= cable_height*2
+        self.bezier_points[p0 + 4].co.x = (self.bezier_points[p0 + 1].co.x + self.bezier_points[p0 + 2].co.x)/2
+        self.bezier_points[p0 + 4].co.y -= 0.04
+        self.bezier_points[p0 + 5].co.x = (self.bezier_points[p0 + 1].co.x + self.bezier_points[p0 + 2].co.x)/2
+        self.bezier_points[p0 + 5].co.y = 0.25
+
+        # self.bezier_points[p0 + 2].co.x = self.bezier_points[p0 + 1].co.x - 0.5
+        # self.bezier_points[p0 + 3].co.y = self.bezier_points[p0 + 2].co.y
+        # self.bezier_points[p0 + 3].co.x = self.bezier_points[p0 + 1].co.x - 1
+        # self.bezier_points[p0 + 4].co.y = self.bezier_points[p0 + 2].co.y
+        # self.bezier_points[p0 + 4].co.x = self.bezier_points[p0 + 1].co.x - 1
+        
         return set(range(p0, p0 + 5))
 
     def make_simple_overlap(self, offset_min, offset_max):
@@ -284,94 +284,22 @@ class RopeRenderer:
         # Get rope mesh vertices in world space
         coords = [rope_deformed.matrix_world @ v.co for v in list(rope_deformed.data.vertices)[::self.coord_offset]] # TODO: this is actually where i specify how many vertices to export (play around with :20); will standardize this
         print("%d Vertices" % len(coords))
-        pixels = {}
         scene.render.resolution_percentage = 100
-        render_scale = scene.render.resolution_percentage / 100
         scene.render.resolution_x = 640
         scene.render.resolution_y = 480
-        render_size = (
-                int(scene.render.resolution_x * render_scale),
-                int(scene.render.resolution_y * render_scale),
-                )
-
-        for i in range(len(coords)):
-            coord = coords[i]
-            camera_coord = bpy_extras.object_utils.world_to_camera_view(scene, self.camera, coord)
-            render_scale = scene.render.resolution_percentage / 100
-            render_size = (
-                    int(scene.render.resolution_x * render_scale),
-                    int(scene.render.resolution_y * render_scale),
-                    )
-            p = (round(camera_coord.x * render_size[0]), round(render_size[1] - camera_coord.y * render_size[1]))
-            pixels[i] = [p, camera_coord]
-
-        pixels_raw = {i: [pixels[i][0]] for i in pixels}
-        pixels_unoccluded = copy.deepcopy(pixels_raw)
-        # Run kNN on mesh vertex pixels
-        neigh = NearestNeighbors(4, M_pix)
-        pixels_list = [v[0] for v in pixels.values()]
-
-        #Prune out occluded pixels (reparent all occluded pixels in a region to the top most mesh vertex in that region
-        neigh.fit(pixels_list)
-        for j in pixels:
-            (p, q), camera_coord = pixels[j]
-            match_idxs = neigh.kneighbors([(p, q)], 4, return_distance=False)
-            for match_idx in match_idxs.squeeze().tolist()[1:]: # Get k neighbors, not including the original pixel (p, q)
-                x, y = pixels[match_idx][0]
-                c1, c2 = camera_coord, pixels[match_idx][1]
-                # If one mesh vertex is below another, its pixel coord is invalid
-                if c1.z - c2.z > M_depth: #c1 on top by at least M_depth
-                    try:
-                        pixels_unoccluded[j].remove((p, q))
-                        pixels_unoccluded[match_idx].append((p, q))
-
-                    except:
-                        pass
-                elif c1.z - c2.z < -M_depth: #c2 on top by at least M_depth
-                    try:
-                        pixels_unoccluded[match_idx].remove((x, y))
-                        pixels_unoccluded[j].append((x, y))
-                    except:
-                        pass
-        print("Null entries", sum(1 for i in pixels_unoccluded if pixels_unoccluded[i] == []))
-
         
-        final_pixs_raw = list(pixels_raw.values())
-        final_pixs_unoccluded = list(pixels_unoccluded.values())
         filename = "{0:06d}_rgb.png".format(self.i)
         if self.save_rgb:
-            scene.world.color = (1, 1, 1)
+            scene.world.color = (0, 0, 0)
             scene.render.display_mode
             scene.render.engine = 'BLENDER_WORKBENCH'
-            scene.display_settings.display_device = 'None'
+            # scene.display_settings.display_device = 'None'
             scene.sequencer_colorspace_settings.name = 'XYZ'
             scene.render.image_settings.file_format='PNG'
             scene.render.filepath = "./images/{}".format(filename)
             bpy.ops.render.render(use_viewport = True, write_still=True)
-        if self.save_depth:
-            scene.render.engine = 'BLENDER_EEVEE'
-            scene.eevee.taa_samples = 1
-            scene.eevee.taa_render_samples = 1
-            scene.use_nodes = True
-            tree = bpy.context.scene.node_tree
-            for node in tree.nodes:
-                if node.name != "Render Layers":
-                    tree.nodes.remove(node)
-            links = tree.links
-            # Blender uses something called compositing nodes to produce depth maps; see here if interested: https://www.youtube.com/watch?v=Zd9xzPKMIWE
-            render_node = tree.nodes["Render Layers"]
-            norm_node = tree.nodes.new(type="CompositorNodeNormalize")
-            inv_node = tree.nodes.new(type="CompositorNodeInvert")
-            viewer_node = tree.nodes.new(type="CompositorNodeViewer")
-            composite = tree.nodes.new(type = "CompositorNodeComposite")
-            links.new(render_node.outputs["Depth"], inv_node.inputs["Color"])
-            links.new(inv_node.outputs[0], norm_node.inputs[0])
-            links.new(norm_node.outputs[0], composite.inputs["Image"])
-            scene.render.use_multiview = False
-            scene.render.filepath = "./images/{}".format(filename)
-            bpy.ops.render.render(write_still=True)
+        
         #self.knots_info[self.i] = final_pixs_unoccluded
-        self.knots_info[self.i] = final_pixs_raw
         self.i += 1
 
 
@@ -386,29 +314,12 @@ class RopeRenderer:
             x = time.time()
             self.clear()
             self.add_camera()
-            self.make_rigid_rope()
-            self.add_rope_asymmetry()
             self.make_bezier()
-            if self.nonplanar:
-                # Generate a split of loops, knots, and planar configs
-                rand = np.random.uniform()
-                if rand < 0.45: 
-                    loop_rand = np.random.uniform(0.32, 0.4)
-                    loop_indices = self.make_simple_loop(loop_rand, loop_rand)
-                    self.randomize_nodes(3, 0.05, 0.1, offlimit_indices=loop_indices)
-                elif rand < 0.7:
-                    loop_rand = np.random.uniform(0.32, 0.4)
-                    loop_indices = self.make_simple_overlap(loop_rand, loop_rand)
-                    self.randomize_nodes(3, 0.05, 0.1, offlimit_indices=loop_indices)
-                else:
-                    self.randomize_nodes(3, 0.6, 0.6)
-                    self.randomize_nodes(3, 0.2, 0.2)
-                    self.randomize_nodes(3, 0.2, 0.2)
-            else:
-                # Generate only planar configs
-                    self.randomize_nodes(3, 0.6, 0.6)
-                    self.randomize_nodes(3, 0.2, 0.2)
-                    self.randomize_nodes(3, 0.2, 0.2)
+            self.add_rope_asymmetry()
+
+            # self.make_simple_loop(0.3, 0.3)
+            self.make_overhand_knot(0.3, 0.3)
+
             self.reposition_camera()
             self.render_single_scene(M_pix=10)
             print("Total time for scene {}s.".format(str((time.time() - x) % 60)))
