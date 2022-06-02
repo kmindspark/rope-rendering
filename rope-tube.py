@@ -84,7 +84,7 @@ class RopeRenderer:
         Place a camera randomly, fixed means no rotations about z axis (planar camera changes only)
         '''
         if fixed:
-            bpy.ops.object.camera_add(location=[0, 0, 10])
+            bpy.ops.object.camera_add(location=[0, 0, 1.5])
             self.camera = bpy.context.active_object
             # self.camera.rotation_euler = (0, 0, random.uniform(-pi/8, pi/8)) # fixed z, rotate only about x/y axis slightly
             self.camera.rotation_euler = (random.uniform(-pi/32, pi/32), random.uniform(-pi/32, pi/32), random.uniform(-pi, pi))
