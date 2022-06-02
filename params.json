@@ -3,6 +3,6 @@
     "save_depth": 0,
     "save_rgb": 1,
     "coord_offset": 200,
-    "num_images": 10,
+    "num_images": 1000,
     "nonplanar": 1
 }
