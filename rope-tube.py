@@ -294,7 +294,7 @@ class RopeRenderer:
         filename = "{0:06d}_rgb.png".format(self.i)
         if self.save_rgb:
             scene.world.color = (0, 0, 0)
-            scene.render.display_mode
+            # scene.render.display_mode
             scene.render.engine = 'BLENDER_WORKBENCH'
             # scene.display_settings.display_device = 'None'
             scene.sequencer_colorspace_settings.name = 'XYZ'
