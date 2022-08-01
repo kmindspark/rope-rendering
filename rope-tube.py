@@ -314,6 +314,30 @@ class RopeRenderer:
             np.save('./annotated/{}'.format(filename.replace('.png', '.npy')),
                 {'img': saved_img, 'pixels': pixels_raw, 'condition': random.choice(([3, 5, 6], [10, 6, 5]))})
         self.i += 1
+    
+    def generate_random_configuration(self):
+        pass
+
+    def get_graph_from_bezier_curve(self):
+        """Steps for extracting the graph from the bezier curve.
+        
+        all_points = `mathutils.geometry.interpolate_bezier` on whole bezier curve
+        intersect_grid = 2d grid of intersection info between all pairs of curve segments
+        cur_edge_start = (Node())
+        cur_edge_height = over
+        for point in all_points:
+            if point is within a radius of a point from another bezier segment:
+                if intersect_grid contig is false:
+                    add point as node to graph
+                intersect_grid contig = true
+            else:
+                intersect_grid contig = false
+        """
+
+        all_points_3d_contig = []
+        for i, pt in enumerate(self.bezier_points):
+            print(pt.)
+            # bpy.mathutils.geometry.interpolate_bezier(self.bezier_points[i])
 
 
     def run(self):
@@ -336,6 +360,8 @@ class RopeRenderer:
 
             self.reposition_camera(self.bezier_points)
             self.render_single_scene(M_pix=10)
+
+            self.get_graph_from_bezier_curve()
             print("Total time for scene {}s.".format(str((time.time() - x) % 60)))
         # if self.save_depth or self.save_rgb:
             # with open("./images/knots_info.json", 'w') as outfile:
@@ -344,5 +370,6 @@ class RopeRenderer:
 if __name__ == '__main__':
     with open("params.json", "r") as f:
         rope_params = json.load(f)
+        rope_params['num_images'] = 1
     renderer = RopeRenderer(save_depth=rope_params["save_depth"], save_rgb=(not rope_params["save_depth"]), num_images = rope_params["num_images"], coord_offset=rope_params["coord_offset"], bezier_knots=rope_params["bezier_knots"])
     renderer.run()
