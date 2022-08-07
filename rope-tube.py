@@ -159,6 +159,35 @@ class RopeRenderer:
         self.rope_asymm.data.materials.append(mat)
         # mat.base_color = (1, 1, 1)
 
+    def gen_random_knot(self, offset_min, offset_max):
+        #TODO: write function to randomly place each point rather than specific places or semi-random locations
+        p0 = np.random.choice(range(3, len(self.bezier_points) - 7))
+        offset_avg = np.random.uniform(offset_min, offset_max)
+
+        self.bezier_points[p0 + 1].co.y += offset_avg
+        # increase z of p0 + 1
+        cable_height = 0.025
+        self.bezier_points[p0 - 1].co.z += cable_height
+        # self.bezier_points[p0 + 1].co.z += cable_height*2
+        self.bezier_points[p0].co.z -= cable_height
+        self.bezier_points[p0 + 1].co.x += 0.1
+        self.bezier_points[p0 + 1].co.z += cable_height
+        self.bezier_points[p0 + 2].co.y += offset_avg - 0.1
+        self.bezier_points[p0 + 2].co.x = self.bezier_points[p0].co.x - 0.1
+        self.bezier_points[p0 + 3].co.x = self.bezier_points[p0 + 2].co.x
+        # self.bezier_points[p0 + 4].co.z -= cable_height*2
+        avg1 = (self.bezier_points[p0 + 1].co.x + self.bezier_points[p0 + 2].co.x)/2 
+        self.bezier_points[p0 + 4].co.x = np.random.uniform(avg1 - 0.01, avg1 + 0.01)
+        self.bezier_points[p0 + 4].co.y -= 0.04
+        avg2 = (self.bezier_points[p0 + 1].co.x + self.bezier_points[p0 + 2].co.x)/2
+        self.bezier_points[p0 + 5].co.x = np.random.uniform(avg2 - 0.01, avg2 + 0.01)
+        self.bezier_points[p0 + 5].co.y = 0.25
+        self.bezier_points[p0 + 6].co.x = 0.0
+        self.bezier_points[p0 + 6].co.y = 0.25
+        self.bezier_points[p0 + 6].co.z -= cable_height
+        
+        return set(range(p0, p0 + 5))
+
     def make_overhand_knot(self, offset_min, offset_max):
         # Geometrically arrange the bezier points into a loop, and slightly randomize over node positions for variety
         #    2_______1
@@ -334,9 +363,9 @@ class RopeRenderer:
                 intersect_grid contig = false
         """
 
-        all_points_3d_contig = []
-        for i, pt in enumerate(self.bezier_points):
-            print(pt.)
+        # all_points_3d_contig = []
+        # for i, pt in enumerate(self.bezier_points):
+        #     print(pt.)
             # bpy.mathutils.geometry.interpolate_bezier(self.bezier_points[i])
 
 
@@ -354,7 +383,8 @@ class RopeRenderer:
             self.make_bezier()
             self.add_rope_asymmetry()
             # self.make_simple_loop(0.3, 0.3)
-            self.make_overhand_knot(0.3, 0.3)
+            # self.make_overhand_knot(0.3, 0.3)
+            self.gen_random_knot(0.05, 0.4)
             self.randomize_nodes(3, 0.05, 0.05, False)
             self.make_distractor_cables(n=np.random.randint(1, 3))
 
@@ -370,6 +400,6 @@ class RopeRenderer:
 if __name__ == '__main__':
     with open("params.json", "r") as f:
         rope_params = json.load(f)
-        rope_params['num_images'] = 1
+        rope_params['num_images'] = 10
     renderer = RopeRenderer(save_depth=rope_params["save_depth"], save_rgb=(not rope_params["save_depth"]), num_images = rope_params["num_images"], coord_offset=rope_params["coord_offset"], bezier_knots=rope_params["bezier_knots"])
     renderer.run()
