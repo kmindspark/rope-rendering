@@ -95,6 +95,8 @@ class RopeRenderer:
             self.camera.name = self.camera_name
             self.camera.rotation_euler = (random.uniform(-pi/16, pi/16), random.uniform(-pi/16, pi/16), random.uniform(-pi, pi))
         bpy.ops.object.light_add(type='SUN', radius=1, location=(0, 0, 0))
+        bpy.ops.object.light_add(type='SUN', radius=1, location=(0, 1, 0))
+        bpy.ops.object.light_add(type='SUN', radius=1, location=(-1, 0, 0))
 
     def make_bezier(self):
         '''
@@ -157,6 +159,11 @@ class RopeRenderer:
         # add a material to the sphere to set color to white
         mat = bpy.data.materials.new(name="Rope-Asymmetry")
         self.rope_asymm.data.materials.append(mat)
+
+        # add a texture to the sphere from "eva_touchdown.png"
+        img = bpy.data.images.load("eva_touchdown.png")
+        tex = bpy.data.textures.new(name="Rope-Asymmetry", type='IMAGE')
+        tex.image = img
         # mat.base_color = (1, 1, 1)
 
     def make_overhand_knot(self, offset_min, offset_max):
@@ -273,10 +280,13 @@ class RopeRenderer:
         # get the bezier points as the coords
         coords = [p.co for p in self.bezier_points]
         print("%d Vertices" % len(coords))
+        print(type(coords[0]))
         pixels = {}
         scene.render.resolution_percentage = 100
-        scene.render.resolution_x = 200
-        scene.render.resolution_y = 200
+        scene.render.resolution_x = 800
+        scene.render.resolution_y = 800
+
+        coords = self.get_overall_point_sequence()
 
         for i in range(len(coords)):
             coord = coords[i]
@@ -312,32 +322,83 @@ class RopeRenderer:
             
             self.knots_info[self.i] = pixels_raw
             np.save('./annotated/{}'.format(filename.replace('.png', '.npy')),
-                {'img': saved_img, 'pixels': pixels_raw, 'condition': random.choice(([3, 5, 6], [10, 6, 5]))})
+                {'img': saved_img, 'pixels': pixels_raw, 'points_3d': [coord[:] for coord in coords], 'condition': random.choice(([3, 5, 6], [10, 6, 5]))})
         self.i += 1
+
+    def get_random_points(self, prev_point=None, exclusion_radius=0.05, max_x=0.3, max_y=0.3):
+        # Get a random point on the rope, excluding the previous point
+        while True:
+            point = np.array([np.random.uniform(-max_x, max_x), np.random.uniform(-max_y, max_y)])
+            if prev_point is None or np.linalg.norm(point - prev_point) > exclusion_radius:
+                return point
     
     def generate_random_configuration(self):
-        pass
+        # Geometrically arrange the bezier points into a loop, and slightly randomize over node positions for variety
+        #    2_______1
+        #     \  4__/ 
+        #      \ | /\
+        #       \5/__\____________
+        #       / \   | 
+        #______0   3__|  
+        p0 = 4 # np.random.choice(range(4, len(self.bezier_points) - 5))
+        bottom_left = np.array((self.bezier_points[p0].co.x, self.bezier_points[p0].co.y))
+        next_random_point = bottom_left
+        for i in range(0, 7):
+            next_random_point = bottom_left + self.get_random_points(prev_point=next_random_point)
+            self.bezier_points[p0 + i].co.x = next_random_point[0]
+            self.bezier_points[p0 + i].co.y = next_random_point[1]
+            self.bezier_points[p0 + i].co.z += np.random.uniform(0, 0.1)
 
-    def get_graph_from_bezier_curve(self):
-        """Steps for extracting the graph from the bezier curve.
+        return set(range(p0, p0 + 5))
+
+
+    def interpBez3(self, bp0, t, bp3):
+        # bp1, HR, HL, bp2
+        return self.interpBez3_(bp0.co, bp0.handle_right, bp3.handle_left, bp3.co, t)
+    #    return interpBez3_(bp0.co, bp0.handle_left, bp3.handle_right, bp3.co, t)
+
+    def interpBez3_(self, p0, p1, p2, p3, t):
+        r = 1-t
+        return (r*r*r*p0 +
+                3*r*r*t*p1 +
+                3*r*t*t*p2 +
+                t*t*t*p3)
+
+    def interpBlenderSpline(self, i1, t2):
+        bp1 = self.bezier_points[i1]
+        bp2 = self.bezier_points[i1+1]
+        return self.interpBez3(bp1, t2, bp2)
+    
+    def get_overall_point_sequence(self):
+        points_3d = []
+        for i in range(len(self.bezier_points) - 1):
+            for j in np.linspace(0, 1, 100, endpoint=False):
+                points_3d.append(self.interpBlenderSpline(i, j))
+        for i in range(len(points_3d)):
+            # convert each point to a blender vector
+            points_3d[i] = Vector(points_3d[i])
+        return points_3d
+
+    # def get_graph_from_bezier_curve(self):
+    #     """Steps for extracting the graph from the bezier curve.
         
-        all_points = `mathutils.geometry.interpolate_bezier` on whole bezier curve
-        intersect_grid = 2d grid of intersection info between all pairs of curve segments
-        cur_edge_start = (Node())
-        cur_edge_height = over
-        for point in all_points:
-            if point is within a radius of a point from another bezier segment:
-                if intersect_grid contig is false:
-                    add point as node to graph
-                intersect_grid contig = true
-            else:
-                intersect_grid contig = false
-        """
+    #     all_points = `mathutils.geometry.interpolate_bezier` on whole bezier curve
+    #     intersect_grid = 2d grid of intersection info between all pairs of curve segments
+    #     cur_edge_start = (Node())
+    #     cur_edge_height = over
+    #     for point in all_points:
+    #         if point is within a radius of a point from another bezier segment:
+    #             if intersect_grid contig is false:
+    #                 add point as node to graph
+    #             intersect_grid contig = true
+    #         else:
+    #             intersect_grid contig = false
+    #     """
 
-        all_points_3d_contig = []
-        for i, pt in enumerate(self.bezier_points):
-            print(pt.)
-            # bpy.mathutils.geometry.interpolate_bezier(self.bezier_points[i])
+    #     all_points_3d_contig = []
+    #     for i, pt in enumerate(self.bezier_points):
+    #         print(pt.)
+    #         # bpy.mathutils.geometry.interpolate_bezier(self.bezier_points[i])
 
 
     def run(self):
@@ -354,18 +415,19 @@ class RopeRenderer:
             self.make_bezier()
             self.add_rope_asymmetry()
             # self.make_simple_loop(0.3, 0.3)
-            self.make_overhand_knot(0.3, 0.3)
-            self.randomize_nodes(3, 0.05, 0.05, False)
-            self.make_distractor_cables(n=np.random.randint(1, 3))
+            # self.make_overhand_knot(0.3, 0.3)
+            self.generate_random_configuration()
+            # self.randomize_nodes(3, 0.05, 0.05, False)
+            # self.make_distractor_cables(n=np.random.randint(1, 3))
 
             self.reposition_camera(self.bezier_points)
             self.render_single_scene(M_pix=10)
 
-            self.get_graph_from_bezier_curve()
+            # self.get_graph_from_bezier_curve()
             print("Total time for scene {}s.".format(str((time.time() - x) % 60)))
-        # if self.save_depth or self.save_rgb:
-            # with open("./images/knots_info.json", 'w') as outfile:
-            #     json.dump(self.knots_info, outfile, sort_keys=True, indent=2)
+        if self.save_depth or self.save_rgb:
+            with open("./images/knots_info.json", 'w') as outfile:
+                json.dump(self.knots_info, outfile, sort_keys=True, indent=2)
 
 if __name__ == '__main__':
     with open("params.json", "r") as f:
