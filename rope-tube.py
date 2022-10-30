@@ -161,9 +161,9 @@ class RopeRenderer:
         self.rope_asymm.data.materials.append(mat)
 
         # add a texture to the sphere from "eva_touchdown.png"
-        img = bpy.data.images.load("eva_touchdown.png")
-        tex = bpy.data.textures.new(name="Rope-Asymmetry", type='IMAGE')
-        tex.image = img
+        # img = bpy.data.images.load("eva_touchdown.png")
+        # tex = bpy.data.textures.new(name="Rope-Asymmetry", type='IMAGE')
+        # tex.image = img
         # mat.base_color = (1, 1, 1)
 
     def make_overhand_knot(self, offset_min, offset_max):
@@ -313,7 +313,7 @@ class RopeRenderer:
             bpy.ops.render.render(use_viewport = True, write_still=True)
 
             saved_img = plt.imread(scene.render.filepath)
-            vis = False
+            vis = True
             if vis:
                 plt.imshow(saved_img)
                 for i in range(len(coords)):
@@ -432,6 +432,6 @@ class RopeRenderer:
 if __name__ == '__main__':
     with open("params.json", "r") as f:
         rope_params = json.load(f)
-        rope_params['num_images'] = 1
+        rope_params['num_images'] = 100000
     renderer = RopeRenderer(save_depth=rope_params["save_depth"], save_rgb=(not rope_params["save_depth"]), num_images = rope_params["num_images"], coord_offset=rope_params["coord_offset"], bezier_knots=rope_params["bezier_knots"])
     renderer.run()
