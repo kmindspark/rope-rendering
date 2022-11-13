@@ -124,6 +124,32 @@ class RopeRenderer:
         # increase the resolution u
         self.bezier.data.resolution_u = 64
 
+    def bezier_to_mesh(self):
+        '''
+        Convert bezier curve to mesh
+        '''
+        # scene = bpy.context.scene
+        # dg = bpy.context.evaluated_depsgraph_get()
+        # self.bezier = self.bezier.evaluated_get(dg)
+        # me = self.bezier.to_mesh() #(preserve_all_data_layers=True, depsgraph=dp)
+        curve = bpy.context.active_object
+        bez_points = curve.data.splines[0].bezier_points
+
+        # Return to object mode.
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        # Convert from a curve to a mesh.
+        bpy.ops.object.convert(target='MESH')
+
+        # # add an object
+        # o = bpy.data.objects.new("curve_mesh", me)
+        # scene.objects.link(o)
+        # o.matrix_world = self.bezier.matrix_world
+
+        # not keep original
+        # scene.objects.unlink(mball)
+
+
     def slightly_randomize(self, point, planar=True, max_offset=0.3):
         # Slightly displaces the position of a point (for randomization in rope configurations)
         offset_x = np.random.uniform(0, max_offset)
@@ -275,7 +301,7 @@ class RopeRenderer:
         scene = bpy.context.scene
         # Dependency graph used to get mesh vertex coords after deformation (Blender's way of tracking these coords)
         depsgraph = bpy.context.evaluated_depsgraph_get()
-        rope_deformed = self.rope_asymm.evaluated_get(depsgraph)
+        # rope_deformed = self.rope_asymm.evaluated_get(depsgraph)
         # Get rope mesh vertices in world space
         # get the bezier points as the coords
         coords = [p.co for p in self.bezier_points]
@@ -411,7 +437,9 @@ class RopeRenderer:
             self.clear()
             self.add_camera(fixed=True)
             self.make_bezier()
-            self.add_rope_asymmetry()
+
+            self.bezier_to_mesh()
+            # self.add_rope_asymmetry()
             # self.make_simple_loop(0.3, 0.3)
             # self.make_overhand_knot(0.3, 0.3)
             self.generate_random_configuration()
