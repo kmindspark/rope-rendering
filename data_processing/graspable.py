@@ -85,7 +85,7 @@ def graph_graspability_heatmap(graspability_dict):
         x.append(point[0])
         y.append(point[1])
         color.append(graspability_dict[point])
-    plt.scatter(x,y,  c = color)
+    plt.scatter(x, y, c=color)
     plt.show()
 
 def main():
