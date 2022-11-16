@@ -44,6 +44,10 @@ outputs a score of the (# of points inside radius that are outside trace_thresho
 score lies between 0 and 1 (where the higher the score, the larger the chance of being ungraspable)
 '''
 def find_pixel_point_graspability(point, radius, trace_threshold, pixel_point_to_idx, points_3d, in3D=False):
+    if in3D:
+        total_points = 4 / 3 * math.pi * (radius ** 3)
+    else:
+        total_points = math.pi * (radius ** 2)
     total_points = 4 / 3 * math.pi * (radius ** 3)
     points_outside_trace_threshold = 0
     start_point_x = point[0] - radius
@@ -59,7 +63,6 @@ def find_pixel_point_graspability(point, radius, trace_threshold, pixel_point_to
             else:
                 inRadius = find_pixel_dist(neigh, point) <= radius
             if inRadius:
-                # if the neighboring pixel is in the rope trace and is within 
                 if find_trace_dist(point, neigh, pixel_point_to_idx) > trace_threshold:
                     points_outside_trace_threshold += 1
     # TODO: think about the denominator
@@ -84,7 +87,6 @@ def graph_graspability_heatmap(graspability_dict):
         color.append(graspability_dict[point])
     plt.scatter(x,y,  c = color)
     plt.show()
-
 
 def main():
     input_file_path = './examples'
