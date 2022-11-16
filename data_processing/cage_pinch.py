@@ -16,7 +16,6 @@ if not os.path.exists(out_file_path):
 
 files = os.listdir(input_file_path)
 
-
 for file in files:
     if not file.endswith('.npy'):
         continue
