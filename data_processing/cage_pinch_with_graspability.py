@@ -18,7 +18,6 @@ def _and_matrices(mat1, mat2):
 
 RADIUS = 40
 THRESHOLD = 50
-UNDERCROSSING_TOLERANCE = 10 # empirically determined
 SPREAD_WIDTH = 5
 
 input_file_path = './examples'
@@ -31,8 +30,6 @@ files = os.listdir(input_file_path)
 
 for file in files:
     if not file.endswith('.npy'):
-        continue
-    if not file.startswith('00000'):
         continue
 
     np_data = np.load(os.path.join(input_file_path, file), allow_pickle=True).item()
@@ -86,9 +83,8 @@ for file in files:
             continue
         line_segments[i] = LineString([curr_pixel, next_pixel])
 
-    # populating cage_point_mask to include points after, and including, first undercrossing (terminate if additional undercrossing found)
-    undercrossing_coords, points_after_undercrossing = set(), set()
-    undercrossing_hit, other_undercrossing_hit = False, False
+    # populating cage_point_mask to include points after, and including, first undercrossing (terminate if overcrossing found)
+    undercrossing_hit, overcrossing_hit = False, False
     seen_pixels = set()
     for i in range(len(pixels) - 1):
         px, py = int(pixels[i][0]), int(pixels[i][1]) 
@@ -115,20 +111,13 @@ for file in files:
                             undercrossing_coords = current_crossing_coords
                             undercrossing_hit = True
                             continue
-                        else:
-                            # additional undercrossing identified, terminate (should not have any endpoints in common with previous undercrossing and have a minimum of specified # of points)
-                            # uncomment next line for debugging:
-                            # print(points_after_undercrossing)
-                            if len(current_crossing_coords.intersection(undercrossing_coords)) == 0 and len(points_after_undercrossing) >= UNDERCROSSING_TOLERANCE:
-                                other_undercrossing_hit = True
-                                break
-                            else:
-                                undercrossing_coords.union(current_crossing_coords)
-                                continue
+                    else:
+                        if undercrossing_hit:
+                            overcrossing_hit = True
+                            break
             if undercrossing_hit:
-                points_after_undercrossing.add((px, py))
                 cage_point_mask[px][py] = 1
-        if other_undercrossing_hit:
+        if overcrossing_hit:
             break
 
     # finding ground truth as the point-wise intersection between cage_point_mask and graspability_map
