@@ -4,7 +4,6 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
-
 NUM_STEPS_MIN_FOR_CROSSING = 10
 DIST_THRESH = 0.1
 
