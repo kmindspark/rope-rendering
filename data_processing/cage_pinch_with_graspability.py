@@ -18,8 +18,7 @@ def _and_matrices(mat1, mat2):
 
 RADIUS = 40
 THRESHOLD = 50
-GRASPABILITY_THRESHOLD = 1.0 # modify based on needs
-UNDERCROSSING_TOLERANCE = 15 # empirically determined
+UNDERCROSSING_TOLERANCE = 10 # empirically determined
 SPREAD_WIDTH = 5
 
 input_file_path = './examples'
@@ -32,6 +31,8 @@ files = os.listdir(input_file_path)
 
 for file in files:
     if not file.endswith('.npy'):
+        continue
+    if not file.startswith('00000'):
         continue
 
     np_data = np.load(os.path.join(input_file_path, file), allow_pickle=True).item()
@@ -54,6 +55,7 @@ for file in files:
     # finding graspable_dict (map from pixels to graspability scores)
     graspable_dict = find_all_graspability_scores(radius=RADIUS, trace_threshold=THRESHOLD, idx_to_pixel=idx_to_pixel, 
         pixel_to_idx=pixel_to_idx, points_3d=points_3d)
+    graspability_threshold = np.percentile(list(set(graspable_dict.values())), 100) # modify based on needs
 
     # setting up img and img boundaries (img_dim_x, img_dim_y)
     img = np_data['img']
@@ -69,7 +71,7 @@ for file in files:
         px, py = int(pixel[0]), int(pixel[1])
         if px not in range(img_dim_x) or py not in range(img_dim_y):
             continue
-        if pixel in graspable_dict and graspable_dict[pixel] <= GRASPABILITY_THRESHOLD:
+        if pixel in graspable_dict and graspable_dict[pixel] <= graspability_threshold:
             graspability_map[px][py] = 1
 
     # finding all line segments
@@ -107,14 +109,16 @@ for file in files:
                     # undercrossing identified (mean of ls' endpoints (height) < mean of other_ls' endpoints (height))
                     current_crossing_coords = set(ls.coords).union(set(other_ls.coords))
                     if mean([points_3d[i][2], points_3d[i + 1][2]]) < mean([points_3d[j][2], points_3d[j + 1][2]]):
-                        print(ls, other_ls)
+                        # uncomment next line for debugging:
+                        # print(ls, other_ls)
                         if not undercrossing_hit:
                             undercrossing_coords = current_crossing_coords
                             undercrossing_hit = True
                             continue
                         else:
                             # additional undercrossing identified, terminate (should not have any endpoints in common with previous undercrossing and have a minimum of specified # of points)
-                            print(points_after_undercrossing)
+                            # uncomment next line for debugging:
+                            # print(points_after_undercrossing)
                             if len(current_crossing_coords.intersection(undercrossing_coords)) == 0 and len(points_after_undercrossing) >= UNDERCROSSING_TOLERANCE:
                                 other_undercrossing_hit = True
                                 break
@@ -146,7 +150,8 @@ for file in files:
             color.append(0)
     plt.clf()
     plt.scatter(x, y, c=color)
-    plt.savefig(os.path.join(out_file_path, file)[:-4] + '_nogmask.png')
+    plt.annotate('Start', (x[0], y[0]))
+    plt.savefig(os.path.join(out_file_path, file)[:-4] + '.png')
     plt.clf()
     plt.imsave(os.path.join(out_file_path, file)[:-4] + '_img.png', img, origin="lower")
     

@@ -5,6 +5,15 @@ import matplotlib.pyplot as plt
 import math
 
 '''
+helper that normalizes map
+'''
+def _normalize_map(dict):
+    min_score, max_score = min(dict.values()), max(dict.values())
+    for k in dict:
+        dict[k] = (dict[k] -  min_score) / (max_score - min_score)
+    return dict
+
+'''
 helper that finds the spatial distance between two points in 3D
 '''
 def _get_3d_dist(point1_3d, point2_3d):
@@ -74,7 +83,7 @@ def find_all_graspability_scores(radius, trace_threshold, idx_to_pixel, pixel_to
         pixel = idx_to_pixel[i]
         graspability_scores[pixel] = find_pixel_point_graspability(pixel, radius, trace_threshold, pixel_to_idx, 
             points_3d, in3D)
-    return graspability_scores
+    return _normalize_map(graspability_scores)
 
 def graph_graspability_heatmap(graspability_dict, img_dim_x, img_dim_y):
     x = []
@@ -88,13 +97,13 @@ def graph_graspability_heatmap(graspability_dict, img_dim_x, img_dim_y):
         y.append(py)
         color.append(graspability_dict[pixel])
     plt.scatter(x, y, c=color)
-    plt.savefig('000003_rgb_gmap.png')
+    plt.show()
 
 def main():
     input_file_path = './examples'
 
     # loads a particular file path in 
-    np_data = np.load(os.path.join(input_file_path, '000003_rgb.npy'), allow_pickle=True).item()
+    np_data = np.load(os.path.join(input_file_path, 'test.npy'), allow_pickle=True).item()
 
     RADIUS = 40
     THRESHOLD = 50
