@@ -52,7 +52,7 @@ for file in files:
     # finding graspable_dict (map from pixels to graspability scores)
     graspable_dict = find_all_graspability_scores(radius=RADIUS, trace_threshold=THRESHOLD, idx_to_pixel=idx_to_pixel, 
         pixel_to_idx=pixel_to_idx, points_3d=points_3d)
-    graspability_threshold = np.percentile(list(set(graspable_dict.values())), 100) # modify based on needs
+    graspability_threshold = np.percentile(list(set(graspable_dict.values())), 100) # modify based on distribution
 
     # setting up img and img boundaries (img_dim_x, img_dim_y)
     img = np_data['img']
