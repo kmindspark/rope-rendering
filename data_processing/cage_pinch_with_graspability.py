@@ -52,7 +52,7 @@ for file in files:
     # finding graspable_dict (map from pixels to graspability scores)
     graspable_dict = find_all_graspability_scores(radius=RADIUS, trace_threshold=THRESHOLD, idx_to_pixel=idx_to_pixel, 
         pixel_to_idx=pixel_to_idx, points_3d=points_3d)
-    graspability_threshold = np.percentile(list(set(graspable_dict.values())), 100) # modify based on distribution
+    graspability_threshold = np.percentile(list(set(graspable_dict.values())), 100) # TODO: modify based on distribution
 
     # setting up img and img boundaries (img_dim_x, img_dim_y)
     img = np_data['img']
@@ -120,27 +120,52 @@ for file in files:
         if overcrossing_hit:
             break
 
-    # finding ground truth as the point-wise intersection between cage_point_mask and graspability_map
-    ground_truth = _and_matrices(cage_point_mask, graspability_map)
+    # finding graspable cage points as the point-wise intersection between cage_point_mask and graspability_map
+    graspable_cage_points = _and_matrices(cage_point_mask, graspability_map)
 
     x = []
     y = []
     color = []
     for pixel in pixels:
-        # ignore off-frame pixels
         px, py = int(pixel[0]), int(pixel[1])
+        # ignore off-frame pixels
         if px not in range(img_dim_x) or py not in range(img_dim_y):
             continue
         x.append(px)
         y.append(py)
-        if ground_truth[px][py] != 0:
+        if graspable_cage_points[px][py] != 0:
             color.append(1)
         else:
             color.append(0)
-    plt.clf()
-    plt.scatter(x, y, c=color)
-    plt.annotate('Start', (x[0], y[0]))
-    plt.savefig(os.path.join(out_file_path, file)[:-4] + '.png')
-    plt.clf()
-    plt.imsave(os.path.join(out_file_path, file)[:-4] + '_img.png', img, origin="lower")
+
+    # finding the first graspable cage point in the trace
+    cage_point = None
+    for pixel in pixels:
+        px, py = int(pixel[0]), int(pixel[1]) 
+        # ignore off-frame pixels
+        if px not in range(img_dim_x) or py not in range(img_dim_y):
+            continue
+        if graspable_cage_points[px][py] == 1:
+            cage_point = pixel
+            break
+    
+    # skip if no graspable cage points found
+    if cage_point is None:
+        print("No cage point found: " + file[:-4])
+        continue
+
+    np_post_processing_data = {}
+    np_post_processing_data['img'] = img
+    np_post_processing_data['pixels'] = pixels
+    np_post_processing_data['cage_point'] = cage_point
+
+    np.save(os.path.join(out_file_path, file)[:-4] + '.npy', np_post_processing_data)
+
+    # plt.clf()
+    # plt.scatter(x, y, c=color)
+    # plt.annotate('Start', (x[0], y[0]))
+    # plt.annotate('Cage', cage_point)
+    # plt.savefig(os.path.join(out_file_path, file)[:-4] + '.png')
+    # plt.clf()
+    # plt.imsave(os.path.join(out_file_path, file)[:-4] + '_img.png', img, origin="lower")
     
