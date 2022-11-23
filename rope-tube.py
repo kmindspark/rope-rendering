@@ -181,6 +181,37 @@ class RopeRenderer:
         self.bezier_points[p0 + 4].co.y -= 0.04
         avg2 = (self.bezier_points[p0 + 1].co.x + self.bezier_points[p0 + 2].co.x)/2
         self.bezier_points[p0 + 5].co.x = np.random.uniform(avg2 - 0.01, avg2 + 0.01)
+
+    def make_fig8_knot(self, offset_min, offset_max):
+        # Geometrically arrange the bezier points into a loop, and slightly randomize over node positions for variety
+        #       |
+        #   6___|___5
+        #   |   1  /
+        #   4 __|_/   
+        #   |\  |
+        #   | \_2________
+        #   3___/
+
+
+        # len of bezier points is 12; TODO: fix these for figure 8 knot
+        p0 = np.random.choice(range(3, len(self.bezier_points) - 6)) # 4
+        offset_avg = (offset_min + offset_max)/2
+        
+        self.bezier_points[p0 + 1].co.y = self.bezier_points[p0 + 1].co.y + offset_avg + np.random.uniform(-0.2, 0.2, 1)[0]
+        # increase z of p0 + 1
+        cable_height = 0.025
+        self.bezier_points[p0 - 1].co.z = self.bezier_points[p0 - 1].co.z + cable_height
+        # self.bezier_points[p0 + 1].co.z += cable_height*2
+        self.bezier_points[p0].co.z -= cable_height
+        self.bezier_points[p0 + 1].co.x = self.bezier_points[p0 + 1].co.x + 0.1 + np.random.uniform(-0.2, 0.2, 1)[0]
+        self.bezier_points[p0 + 1].co.z += cable_height
+        self.bezier_points[p0 + 2].co.y += self.bezier_points[p0 + 2].co.y + offset_avg - 0.1 + np.random.uniform(-0.2, 0.2, 1)[0]
+        self.bezier_points[p0 + 2].co.x = self.bezier_points[p0].co.x - 0.1 + np.random.uniform(-0.2, 0.2, 1)[0]
+        self.bezier_points[p0 + 3].co.x = self.bezier_points[p0 + 2].co.x + np.random.uniform(-0.2, 0.2, 1)[0]
+        # self.bezier_points[p0 + 4].co.z -= cable_height*2
+        self.bezier_points[p0 + 4].co.x = (self.bezier_points[p0 + 1].co.x + self.bezier_points[p0 + 2].co.x)/2
+        self.bezier_points[p0 + 4].co.y -= 0.04
+        self.bezier_points[p0 + 5].co.x = (self.bezier_points[p0 + 1].co.x + self.bezier_points[p0 + 2].co.x)/2
         self.bezier_points[p0 + 5].co.y = 0.25
         self.bezier_points[p0 + 6].co.x = 0.0
         self.bezier_points[p0 + 6].co.y = 0.25
@@ -196,20 +227,20 @@ class RopeRenderer:
         #       \5/__\____________
         #       / \   | 
         #______0   3__|  
-        p0 = 4 # np.random.choice(range(4, len(self.bezier_points) - 5))
+        p0 = np.random.choice(range(3, len(self.bezier_points) - 6)) # 4
         offset_avg = (offset_min + offset_max)/2
-
-        self.bezier_points[p0 + 1].co.y += offset_avg
+        
+        self.bezier_points[p0 + 1].co.y = self.bezier_points[p0 + 1].co.y + offset_avg + np.random.uniform(-0.2, 0.2, 1)[0]
         # increase z of p0 + 1
         cable_height = 0.025
-        self.bezier_points[p0 - 1].co.z += cable_height
+        self.bezier_points[p0 - 1].co.z = self.bezier_points[p0 - 1].co.z + cable_height
         # self.bezier_points[p0 + 1].co.z += cable_height*2
         self.bezier_points[p0].co.z -= cable_height
-        self.bezier_points[p0 + 1].co.x += 0.1
+        self.bezier_points[p0 + 1].co.x = self.bezier_points[p0 + 1].co.x + 0.1 + np.random.uniform(-0.2, 0.2, 1)[0]
         self.bezier_points[p0 + 1].co.z += cable_height
-        self.bezier_points[p0 + 2].co.y += offset_avg - 0.1
-        self.bezier_points[p0 + 2].co.x = self.bezier_points[p0].co.x - 0.1
-        self.bezier_points[p0 + 3].co.x = self.bezier_points[p0 + 2].co.x
+        self.bezier_points[p0 + 2].co.y += self.bezier_points[p0 + 2].co.y + offset_avg - 0.1 + np.random.uniform(-0.2, 0.2, 1)[0]
+        self.bezier_points[p0 + 2].co.x = self.bezier_points[p0].co.x - 0.1 + np.random.uniform(-0.2, 0.2, 1)[0]
+        self.bezier_points[p0 + 3].co.x = self.bezier_points[p0 + 2].co.x + np.random.uniform(-0.2, 0.2, 1)[0]
         # self.bezier_points[p0 + 4].co.z -= cable_height*2
         self.bezier_points[p0 + 4].co.x = (self.bezier_points[p0 + 1].co.x + self.bezier_points[p0 + 2].co.x)/2
         self.bezier_points[p0 + 4].co.y -= 0.04
@@ -384,7 +415,8 @@ class RopeRenderer:
             self.add_rope_asymmetry()
             # self.make_simple_loop(0.3, 0.3)
             # self.make_overhand_knot(0.3, 0.3)
-            self.gen_random_knot(0.05, 0.4)
+            # self.gen_random_knot(0.05, 0.4)
+            self.make_fig8_knot(0.3, 0.3)
             self.randomize_nodes(3, 0.05, 0.05, False)
             self.make_distractor_cables(n=np.random.randint(1, 3))
 
