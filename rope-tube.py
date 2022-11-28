@@ -84,19 +84,21 @@ class RopeRenderer:
         Place a camera randomly, fixed means no rotations about z axis (planar camera changes only)
         '''
         if fixed:
-            bpy.ops.object.camera_add(location=[0, 0, 1.5])
+            bpy.ops.object.camera_add(location=[0, 0, 3.5])
+            # change focal length
+            bpy.context.object.data.lens = 160
             self.camera = bpy.context.active_object
             # self.camera.rotation_euler = (0, 0, random.uniform(-pi/8, pi/8)) # fixed z, rotate only about x/y axis slightly
-            self.camera.rotation_euler = (random.uniform(-pi/32, pi/32), random.uniform(-pi/32, pi/32), random.uniform(-pi, pi))
+            self.camera.rotation_euler = (0, 0, 0) #(random.uniform(-pi/32, pi/32), random.uniform(-pi/32, pi/32), random.uniform(-pi, pi))
             self.camera.name = self.camera_name
         else:
             bpy.ops.object.camera_add(location=[random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1)])
             self.camera = bpy.context.active_object
             self.camera.name = self.camera_name
             self.camera.rotation_euler = (random.uniform(-pi/16, pi/16), random.uniform(-pi/16, pi/16), random.uniform(-pi, pi))
-        bpy.ops.object.light_add(type='SUN', radius=1, location=(0, 0, 0))
-        bpy.ops.object.light_add(type='SUN', radius=1, location=(0, 1, 0))
-        bpy.ops.object.light_add(type='SUN', radius=1, location=(-1, 0, 0))
+        # bpy.ops.object.light_add(type='SUN', radius=1, location=(0, 0, 0))
+        # bpy.ops.object.light_add(type='SUN', radius=1, location=(0, 1, 0))
+        # bpy.ops.object.light_add(type='SUN', radius=1, location=(-1, 0, 0))
 
     def make_bezier(self):
         '''
@@ -119,8 +121,10 @@ class RopeRenderer:
         self.bezier.select_set(False)
 
         # set geometry bevel with depth of 0.01
-        self.bezier.data.bevel_depth = 0.007
-        self.bezier.data.bevel_resolution = 10
+        self.bezier.data.bevel_depth = 0.004
+        self.bezier.data.bevel_resolution = 12
+        # cap endpoints
+        self.bezier.data.use_fill_caps = True
         # increase the resolution u
         self.bezier.data.resolution_u = 64
 
@@ -266,9 +270,16 @@ class RopeRenderer:
         # Orient camera towards the rope
         bpy.context.scene.camera = self.camera
         bpy.ops.view3d.camera_to_view_selected()
-        self.camera.location.x = (curve_vertices[5].co.x + curve_vertices[6].co.x)/2# + np.random.uniform(-0.04, 0.04)
-        self.camera.location.y = (curve_vertices[5].co.y + curve_vertices[6].co.y)/2# + np.random.uniform(-0.04, 0.04)
-        # self.camera.location.z += np.random.uniform(3.3, 3.6)
+
+        # calculate min and max x and y coordinates of curve vertices
+        min_x = min([v.co.x for v in curve_vertices])
+        max_x = max([v.co.x for v in curve_vertices])
+        min_y = min([v.co.y for v in curve_vertices])
+        max_y = max([v.co.y for v in curve_vertices])
+
+        self.camera.location.x = (max_x + min_x)/2
+        self.camera.location.y = (max_y + min_y)/2
+        self.camera.location.z = 3.0
 
     def render_single_scene(self, M_pix=20, M_depth=0.2):
 		# Produce a single image of the current scene, save_rgb the mesh vertex pixel coords
@@ -283,8 +294,16 @@ class RopeRenderer:
         # print(type(coords[0]))
         pixels = {}
         scene.render.resolution_percentage = 100
-        scene.render.resolution_x = 500
-        scene.render.resolution_y = 500
+        scene.render.resolution_x = 600
+        scene.render.resolution_y = 600
+
+        # remove all lights from scene
+        for obj in bpy.data.objects:
+            if obj.type == 'LIGHT':
+                obj.select_set(True)
+            else:
+                obj.select_set(False)
+        bpy.ops.object.delete()
 
         coords = self.get_overall_point_sequence()
 
@@ -309,7 +328,7 @@ class RopeRenderer:
             # scene.display_settings.display_device = 'None'
             scene.sequencer_colorspace_settings.name = 'XYZ'
             scene.render.image_settings.file_format='PNG'
-            scene.render.filepath = "./sim_data/images_complex_trash/{}".format(filename)
+            scene.render.filepath = "./sim_data/images_medium/{}".format(filename)
             bpy.ops.render.render(use_viewport = True, write_still=True)
 
             saved_img = plt.imread(scene.render.filepath)
@@ -321,7 +340,7 @@ class RopeRenderer:
                 plt.show()
             
             self.knots_info[self.i] = pixels_raw
-            np.save('./sim_data/annotated_complex_trash/{}'.format(filename.replace('.png', '.npy')),
+            np.save('./sim_data/annotated_medium/{}'.format(filename.replace('.png', '.npy')),
                 {'img': saved_img, 'pixels': pixels_raw, 'points_3d': [coord[:] for coord in coords]}) #, 'condition': random.choice(([3, 5, 6], [10, 6, 5]))})
         self.i += 1
 
@@ -347,7 +366,7 @@ class RopeRenderer:
             next_random_point = bottom_left + self.get_random_points(prev_point=next_random_point)
             self.bezier_points[p0 + i].co.x = next_random_point[0]
             self.bezier_points[p0 + i].co.y = next_random_point[1]
-            self.bezier_points[p0 + i].co.z += np.random.uniform(-0.2, 0.2)
+            self.bezier_points[p0 + i].co.z = np.random.uniform(-0.2, 0.2)
 
 
     def interpBez3(self, bp0, t, bp3):
@@ -430,6 +449,7 @@ class RopeRenderer:
 if __name__ == '__main__':
     with open("params.json", "r") as f:
         rope_params = json.load(f)
-        rope_params['num_images'] = 10000
+        rope_params['num_images'] = 10000 #10000
     renderer = RopeRenderer(save_depth=rope_params["save_depth"], save_rgb=(not rope_params["save_depth"]), num_images = rope_params["num_images"], coord_offset=rope_params["coord_offset"], bezier_knots=rope_params["bezier_knots"])
+
     renderer.run()
