@@ -14,6 +14,8 @@ from sklearn.neighbors import NearestNeighbors
 import argparse
 import matplotlib.pyplot as plt
 import random
+sys.path.append(os.getcwd())
+from dr_utils import *
 
 class RopeRenderer:
     def __init__(self, rope_radius=None, sphere_radius=None, rope_iterations=None, rope_screw_offset=None, bezier_scale=3.7, bezier_knots=12, save_depth=True, save_rgb=False, coord_offset=20, num_images=10, nonplanar=True):
@@ -110,7 +112,7 @@ class RopeRenderer:
         bpy.ops.transform.resize(value=(self.bezier_scale, self.bezier_scale, self.bezier_scale))
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.curve.subdivide(number_cuts=self.bezier_subdivisions)
-        bpy.ops.transform.resize(value=(1, 0, 1))
+        # bpy.ops.transform.resize(value=(1, 0, 1))
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.curve.select_all(action='SELECT')
         bpy.ops.curve.handle_type_set(type='AUTOMATIC')
@@ -118,6 +120,16 @@ class RopeRenderer:
         self.bezier = bpy.context.active_object
         self.bezier_points = self.bezier.data.splines[0].bezier_points
         self.bezier.name = self.bezier_name
+
+        material = bpy.data.materials.new("_material")
+        material.diffuse_color = (1.0,1.0,1.0,1.0)
+        self.bezier.data.materials.append(material)
+
+        material = bpy.data.materials.new("_material_dark")
+        material.diffuse_color = (1.0,1.0,1.0,0.5)
+        self.bezier.data.materials.append(material)
+
+        # texture_randomize(self.bezier, "./dr_data/blue_rope_textures")
         self.bezier.select_set(False)
 
         # set geometry bevel with depth of 0.01
@@ -322,7 +334,7 @@ class RopeRenderer:
         
         filename = "{0:06d}_rgb.png".format(self.i)
         if self.save_rgb:
-            scene.world.color = (0, 0, 0)
+            scene.world.color = (0.03, 0.03, 0.03) #(0, 0, 0)
             # scene.render.display_mode
             scene.render.engine = 'BLENDER_WORKBENCH'
             # scene.display_settings.display_device = 'None'
@@ -449,7 +461,11 @@ class RopeRenderer:
 if __name__ == '__main__':
     with open("params.json", "r") as f:
         rope_params = json.load(f)
+<<<<<<< HEAD
         rope_params['num_images'] = 10000 #10000
+=======
+        rope_params['num_images'] = 10
+>>>>>>> efabd92f10f713b54d4528544a5458df1c4a79c0
     renderer = RopeRenderer(save_depth=rope_params["save_depth"], save_rgb=(not rope_params["save_depth"]), num_images = rope_params["num_images"], coord_offset=rope_params["coord_offset"], bezier_knots=rope_params["bezier_knots"])
 
     renderer.run()

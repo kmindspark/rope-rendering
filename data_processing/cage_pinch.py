@@ -4,7 +4,6 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
-
 NUM_STEPS_MIN_FOR_CROSSING = 10
 DIST_THRESH = 0.1
 
@@ -15,7 +14,6 @@ if not os.path.exists(out_file_path):
     os.makedirs(out_file_path)
 
 files = os.listdir(input_file_path)
-
 
 for file in files:
     if not file.endswith('.npy'):
