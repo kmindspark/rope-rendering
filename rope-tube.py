@@ -133,7 +133,7 @@ class RopeRenderer:
         self.bezier.select_set(False)
 
         # set geometry bevel with depth of 0.01
-        self.bezier.data.bevel_depth = 0.004
+        self.bezier.data.bevel_depth = 0.003
         self.bezier.data.bevel_resolution = 12
         # cap endpoints
         self.bezier.data.use_fill_caps = True
@@ -352,8 +352,11 @@ class RopeRenderer:
                 plt.show()
             
             self.knots_info[self.i] = pixels_raw
-            np.save('./sim_data/annotated_medium/{}'.format(filename.replace('.png', '.npy')),
-                {'img': saved_img, 'pixels': pixels_raw, 'points_3d': [coord[:] for coord in coords]}) #, 'condition': random.choice(([3, 5, 6], [10, 6, 5]))})
+            annotations_folder = "./sim_data/annotations_medium/"
+            if not os.path.exists(annotations_folder):
+                os.makedirs(annotations_folder)
+            filename = annotations_folder + '{}'.format(filename.replace('.png', '.npy'))
+            np.save(filename, {'img': saved_img, 'pixels': pixels_raw, 'points_3d': [coord[:] for coord in coords]}) #, 'condition': random.choice(([3, 5, 6], [10, 6, 5]))})
         self.i += 1
 
     def get_random_points(self, prev_point=None, exclusion_radius=0.05, max_x=0.3, max_y=0.3):
@@ -461,11 +464,7 @@ class RopeRenderer:
 if __name__ == '__main__':
     with open("params.json", "r") as f:
         rope_params = json.load(f)
-<<<<<<< HEAD
-        rope_params['num_images'] = 10000 #10000
-=======
         rope_params['num_images'] = 10
->>>>>>> efabd92f10f713b54d4528544a5458df1c4a79c0
     renderer = RopeRenderer(save_depth=rope_params["save_depth"], save_rgb=(not rope_params["save_depth"]), num_images = rope_params["num_images"], coord_offset=rope_params["coord_offset"], bezier_knots=rope_params["bezier_knots"])
 
     renderer.run()
