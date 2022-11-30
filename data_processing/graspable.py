@@ -83,7 +83,8 @@ def find_all_graspability_scores(radius, trace_threshold, idx_to_pixel, pixel_to
         pixel = idx_to_pixel[i]
         graspability_scores[pixel] = find_pixel_point_graspability(pixel, radius, trace_threshold, pixel_to_idx, 
             points_3d, in3D)
-    return _normalize_map(graspability_scores)
+    # return _normalize_map(graspability_scores)
+    return graspability_scores
 
 def graph_graspability_heatmap(graspability_dict, img_dim_x, img_dim_y):
     x = []
