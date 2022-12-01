@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from graspable import find_all_graspability_scores
 from shapely.geometry import LineString
 from statistics import mean
+from tqdm import tqdm
 
 def _and_matrices(mat1, mat2):
     if mat1.shape != mat2.shape:
@@ -20,15 +21,17 @@ RADIUS = 40
 THRESHOLD = 50
 SPREAD_WIDTH = 5
 
-input_file_path = './examples'
-out_file_path = './processed_sim_data/crop_cage_pinch_dataset'
+input_file_path = '/home/kaushiks/hulk-keypoints/processed_sim_data/trace_dataset_medium_2/train'
+out_file_path = './post_processed_sim_data/crop_cage_pinch_dataset'
 
 if not os.path.exists(out_file_path):
     os.makedirs(out_file_path)
 
 files = os.listdir(input_file_path)
+num_files = len(files)
 
-for file in files:
+for file in tqdm(files):
+
     if not file.endswith('.npy'):
         continue
 
@@ -153,7 +156,7 @@ for file in files:
     # skip if no graspable cage points found
     if cage_point is None:
         print("No cage point found: " + file[:-4])
-        continue
+        # continue
 
     np_post_processing_data = {}
     np_post_processing_data['img'] = img
@@ -161,12 +164,4 @@ for file in files:
     np_post_processing_data['cage_point'] = cage_point
 
     np.save(os.path.join(out_file_path, file)[:-4] + '.npy', np_post_processing_data)
-
-    # plt.clf()
-    # plt.scatter(x, y, c=color)
-    # plt.annotate('Start', (x[0], y[0]))
-    # plt.annotate('Cage', cage_point)
-    # plt.savefig(os.path.join(out_file_path, file)[:-4] + '.png')
-    # plt.clf()
-    # plt.imsave(os.path.join(out_file_path, file)[:-4] + '_img.png', img, origin="lower")
     
