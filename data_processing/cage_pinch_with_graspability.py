@@ -64,7 +64,6 @@ for file in tqdm(files):
 
     # setting graspability map and cage_point_mask to all 0s
     graspability_map = np.zeros((img_dim_x, img_dim_y))
-    cage_point_mask = np.zeros((img_dim_x, img_dim_y))
 
     # populating graspability map
     for i in range(len(pixels)):
@@ -87,7 +86,7 @@ for file in tqdm(files):
             continue
         line_segments[i] = LineString([curr_pixel, next_pixel])
 
-    # populating cage_point_mask to include points after, and including, first undercrossing (terminate if overcrossing found)
+    # populating cage_point_mask to include points after, and including, first undercrossing
     undercrossing_hit, overcrossing_hit = False, False
     seen_pixels = set()
     for i in range(len(pixels) - 1):
@@ -107,25 +106,23 @@ for file in tqdm(files):
                 # crossing identified (unique, intersecting line segments with no endpoints in common)
                 if ls.intersects(other_ls):
                     # undercrossing identified (mean of ls' endpoints (height) < mean of other_ls' endpoints (height))
-                    current_crossing_coords = set(ls.coords).union(set(other_ls.coords))
                     if mean([points_3d[i][2], points_3d[i + 1][2]]) < mean([points_3d[j][2], points_3d[j + 1][2]]):
                         # uncomment next line for debugging:
                         # print(ls, other_ls)
+                        # finding first undercrossing
                         if not undercrossing_hit:
-                            undercrossing_coords = current_crossing_coords
                             undercrossing_hit = True
                             continue
-                    else:
-                        if undercrossing_hit:
-                            overcrossing_hit = True
-                            break
-            if undercrossing_hit:
-                cage_point_mask[px][py] = 1
-        if overcrossing_hit:
+        # finding the first graspable point after the discovered undercrossing and terminating 
+        graspability_threshold = 0
+        if undercrossing_hit and graspability_map[px][py] == 1:
+            cage_point = pixels[i]
             break
 
-    # finding graspable cage points as the point-wise intersection between cage_point_mask and graspability_map
-    graspable_cage_points = _and_matrices(cage_point_mask, graspability_map)
+    # skip if no graspable cage points found
+    if cage_point is None:
+        print("No cage point found: " + file[:-4])
+        continue
 
     x = []
     y = []
@@ -137,26 +134,10 @@ for file in tqdm(files):
             continue
         x.append(px)
         y.append(py)
-        if graspable_cage_points[px][py] != 0:
+        if (px, py) == (int(cage_point[0]), int(cage_point[1])):
             color.append(1)
         else:
             color.append(0)
-
-    # finding the first graspable cage point in the trace
-    cage_point = None
-    for pixel in pixels:
-        px, py = int(pixel[0]), int(pixel[1]) 
-        # ignore off-frame pixels
-        if px not in range(img_dim_x) or py not in range(img_dim_y):
-            continue
-        if graspable_cage_points[px][py] == 1:
-            cage_point = pixel
-            break
-    
-    # skip if no graspable cage points found
-    if cage_point is None:
-        print("No cage point found: " + file[:-4])
-        # continue
 
     np_post_processing_data = {}
     np_post_processing_data['img'] = img
@@ -164,4 +145,11 @@ for file in tqdm(files):
     np_post_processing_data['cage_point'] = cage_point
 
     np.save(os.path.join(out_file_path, file)[:-4] + '.npy', np_post_processing_data)
-    
+
+    # plt.clf()
+    # plt.scatter(x, y, c=color)
+    # plt.annotate('Start', (x[0], y[0]))
+    # plt.annotate('Cage', cage_point)
+    # plt.savefig(os.path.join(out_file_path, file)[:-4] + '.png')
+    # plt.clf()
+    # plt.imsave(os.path.join(out_file_path, file)[:-4] + '_img.png', img, origin="lower")
